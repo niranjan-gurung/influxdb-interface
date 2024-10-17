@@ -1,9 +1,7 @@
 from PyQt6.QtWidgets import QApplication
 
 from window import MainWindow
-
-#bucket_name = input('Enter bucket name: ')
-#bucket_ret_days = input('Enter retention policy (days): ')
+from connect_db import init_connection
 
 # app instance (once per app)
 app = QApplication([])

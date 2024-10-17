@@ -1,55 +1,68 @@
 from PyQt6.QtWidgets import \
-    QMainWindow, QPushButton, QVBoxLayout, \
-    QWidget, QLineEdit, QComboBox
+    QMainWindow, QPushButton, QLabel, \
+    QWidget, QLineEdit, QSpinBox, \
+    QVBoxLayout, QHBoxLayout
 
-from init_bucket import create
-
-from dotenv import load_dotenv
-import os
-
-# influx api token, url, org..
-load_dotenv()
-
-url = os.getenv('URL')
-token = os.getenv('INFLUX_TOKEN')
-org = os.getenv('ORG')
+from influx import create_db, generate_data
 
 # subclass QMainWindow
 class MainWindow(QMainWindow):
     def __init__(self):
-        super().__init__()
+        super(MainWindow, self).__init__()
 
         self.setWindowTitle("InfluxDB Interface")
-        
-        self.dropdown = QComboBox()
-        self.dropdown.addItems(["Create", "Generate Data"])
+
+        # bucket label
+        self.b_name_label = QLabel("Bucket name")
+        self.b_ret_label = QLabel("Bucket retention in days (0 for no expiration)")
+        # data label
+        self.gen_data_label = QLabel("Generate Data")
 
         self.bucket = QLineEdit()
-        self.retention = QLineEdit()
-        self.bucket.setPlaceholderText("Enter bucket name")
-        self.retention.setPlaceholderText("Enter retention (in days)")
+        self.bucket.setPlaceholderText("enter name")
+        self.retention = QSpinBox()
 
-        self.button = QPushButton("submit")
-        self.button.clicked.connect(self.on_btn_click)
+        self.submit_btn = QPushButton("submit")
+        self.submit_btn.clicked.connect(self.on_create)
 
-        layout = QVBoxLayout()
-        layout.addWidget(self.dropdown)
-        layout.addWidget(self.bucket)
-        layout.addWidget(self.retention)
-        layout.addWidget(self.button)
+        self.generate_btn = QPushButton("generate")
+        self.generate_btn.clicked.connect(self.on_generate)
+
+        main_layout = QVBoxLayout()
+        content_left = QVBoxLayout()
+        content_right = QVBoxLayout()
+        content_layout = QHBoxLayout()
+
+        content_left.addWidget(self.b_name_label)
+        content_left.addWidget(self.bucket)
+        content_right.addWidget(self.b_ret_label)
+        content_right.addWidget(self.retention)
+
+        content_layout.addLayout(content_left)
+        content_layout.addLayout(content_right)
+
+        main_layout.addLayout(content_layout)
+        main_layout.addWidget(self.submit_btn)
+        main_layout.addWidget(self.gen_data_label)
+        main_layout.addWidget(self.generate_btn)
 
         container = QWidget()
-        container.setLayout(layout)
+        container.setLayout(main_layout)
 
         self.setCentralWidget(container)
 
-    def on_btn_click(self):
+    def on_create(self):
         bucket_name = self.bucket.text()
         bucket_ret_days = self.retention.text()
 
-        res = create(url, token, org, bucket_name, bucket_ret_days)
+        res = create_db(bucket_name, bucket_ret_days)
 
         if res:
-            print(f'Successfully created bucket {res.name}.')
+            print(f'Successfully created bucket \'{res.name}\'.')
         else:
             print("Faied to create bucket.")
+
+    def on_generate(self):
+        print('data generated...')
+
+        data = generate_data()

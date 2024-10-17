@@ -2,12 +2,14 @@ from influxdb_client import InfluxDBClient, BucketRetentionRules
 from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb_client.rest import ApiException
 
-def create(url, token, org, bucket_name, bucket_ret_days):
+from connect_db import init_connection
+
+def create_db(bucket_name, bucket_ret_days):
     # string -> int
     ret_days = int(bucket_ret_days)
     
     # retention == how long DB will keep its data
-    if ret_days == -1:
+    if ret_days == 0:
         bucket_ret_sec = None   # no expiration
         retention_rules = []
     else:
@@ -18,11 +20,7 @@ def create(url, token, org, bucket_name, bucket_ret_days):
             every_seconds=bucket_ret_sec)]
     
     # establish connection to influxdb
-    client = InfluxDBClient(
-        url=url,
-        token=token,
-        org=org
-    )
+    client = init_connection()
     buckets_api = client.buckets_api()
 
     try:
@@ -30,7 +28,7 @@ def create(url, token, org, bucket_name, bucket_ret_days):
         bucket = buckets_api.create_bucket(
             bucket_name=bucket_name,
             retention_rules=retention_rules,
-            org=org
+            org=client.org
         )
     except ApiException as e:
         print(f'Error create bucket: {e}')
@@ -40,3 +38,6 @@ def create(url, token, org, bucket_name, bucket_ret_days):
         client.close()
 
     return bucket
+
+def generate_data():
+    pass
