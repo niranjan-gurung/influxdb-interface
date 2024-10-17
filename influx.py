@@ -1,4 +1,4 @@
-from influxdb_client import InfluxDBClient, BucketRetentionRules
+from influxdb_client import InfluxDBClient, BucketRetentionRules, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb_client.rest import ApiException
 
@@ -39,5 +39,15 @@ def create_db(bucket_name, bucket_ret_days):
 
     return bucket
 
-def generate_data():
-    pass
+# generate fake/dummy data for testing..
+def generate_data(bucket_name):
+    # establish connection to influxdb
+    client = init_connection()
+    
+    # prepare payload
+    p = Point("test_measurement") \
+        .tag("location", "Prague") \
+        .field("temperature", 24.4) \
+        
+    write_api = client.write_api(write_options=SYNCHRONOUS)
+    write_api.write(bucket=bucket_name, record=p)

@@ -43,6 +43,26 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(content_layout)
         main_layout.addWidget(self.submit_btn)
+
+
+        # list all buckets from the org,
+        # allowing user to select which bucket to generate data for..
+
+        # client = init_connection()
+        # buckets_api = client.buckets_api()
+
+        # buckets = buckets_api.find_buckets_iter()
+        # print("\n".join([f"\n Name: {bucket.name}" 
+        #          for bucket in buckets]))
+
+
+        #######################################################
+        #                                                     #
+        # add QSpinBox() to define how many rows to generate? #
+        #                                                     #
+        #######################################################
+
+
         main_layout.addWidget(self.gen_data_label)
         main_layout.addWidget(self.generate_btn)
 
@@ -65,4 +85,7 @@ class MainWindow(QMainWindow):
     def on_generate(self):
         print('data generated...')
 
-        data = generate_data()
+        # replace this with selected bucket from drop down list..
+        bucket_name = self.bucket.text()
+
+        data = generate_data(bucket_name)
