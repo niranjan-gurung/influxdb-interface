@@ -1,9 +1,19 @@
-from influxdb_client import InfluxDBClient, BucketRetentionRules, Point
+#############################################################
+#                                                           #
+# contains methods to interact with influxdb cloud TSM (v2) #
+#                                                           #
+#############################################################
+
+from influxdb_client import BucketRetentionRules
 from influxdb_client.client.write_api import SYNCHRONOUS
-from influxdb_client.rest import ApiException
 
+from test_data.structured_data import Sensor
 from connect_db import init_connection
+import random
 
+"""
+Create new bucket + define its retention,
+"""
 def create_db(bucket_name, bucket_ret_days):
     # string -> int
     ret_days = int(bucket_ret_days)
@@ -15,39 +25,69 @@ def create_db(bucket_name, bucket_ret_days):
     else:
         # converts from days to seconds
         bucket_ret_sec = ret_days * 86400
-        retention_rules = [BucketRetentionRules(
+        retention_rules = BucketRetentionRules(
             type="expire", 
-            every_seconds=bucket_ret_sec)]
+            every_seconds=bucket_ret_sec)
     
     # establish connection to influxdb
-    client = init_connection()
-    buckets_api = client.buckets_api()
-
-    try:
+    with init_connection() as client:
+        buckets_api = client.buckets_api()
+        
         # create bucket:
         bucket = buckets_api.create_bucket(
             bucket_name=bucket_name,
             retention_rules=retention_rules,
             org=client.org
         )
-    except ApiException as e:
-        print(f'Error create bucket: {e}')
-        return False
-    
-    finally:
-        client.close()
+        return bucket
 
-    return bucket
-
-# generate fake/dummy data for testing..
+"""
+Generate fake/dummy data for testing,
+creates sensor data used in trains by default.
+"""
 def generate_data(bucket_name):
+    # used to change tag (from 101 - 105)
+    counter = 0
+
+    # return value..
+    # used for debug
+    sensor_data = []
+
     # establish connection to influxdb
-    client = init_connection()
+    with init_connection() as client:
+        # range needs to be defined by user... (todo)
+        for i in range(20):
+            if i % 5 == 0:
+                counter = 0
+            counter += 1
+
+            # prepare payload
+            sensor = Sensor(
+                'TLM010' + str(counter),            # tag
+                round(random.uniform(5, 35), 2),    # temp
+                round(random.uniform(30, 85), 2),   # hum
+                random.randrange(100, 800),         # lux
+                random.randrange(250, 1000),        # co2
+                round(random.uniform(-1, 1), 3),    # acx
+                round(random.uniform(-1, 1), 3),    # acy
+                round(random.uniform(-1, 1), 3))    # acz
+            
+            print(sensor)
+            sensor_data.append(sensor)
+
+            write_api = client.write_api(write_options=SYNCHRONOUS)
+            write_api.write(
+                bucket=bucket_name, 
+                record=sensor, 
+                record_measurement_name="railData",
+                record_tag_keys=["sensor_id"],
+                record_field_keys=[
+                    "temp", 
+                    "hum", 
+                    "lux", 
+                    "co2", 
+                    "acX", "acY", "acZ"])
+            
+        return sensor_data
+            
     
-    # prepare payload
-    p = Point("test_measurement") \
-        .tag("location", "Prague") \
-        .field("temperature", 24.4) \
-        
-    write_api = client.write_api(write_options=SYNCHRONOUS)
-    write_api.write(bucket=bucket_name, record=p)
