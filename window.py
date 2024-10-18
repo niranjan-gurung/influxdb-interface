@@ -75,17 +75,21 @@ class MainWindow(QMainWindow):
         bucket_name = self.bucket.text()
         bucket_ret_days = self.retention.text()
 
-        res = create_db(bucket_name, bucket_ret_days)
+        bucket = create_db(bucket_name, bucket_ret_days)
 
-        if res:
-            print(f'Successfully created bucket \'{res.name}\'.')
+        if bucket:
+            print(f'Successfully created bucket \'{bucket.name}\'.')
         else:
             print("Faied to create bucket.")
 
     def on_generate(self):
-        print('data generated...')
-
         # replace this with selected bucket from drop down list..
         bucket_name = self.bucket.text()
+        sensors = generate_data(bucket_name)
 
-        data = generate_data(bucket_name)
+        print('data generating...')
+
+        if sensors:
+            print('Successfully generated dummy data!!')
+        else:
+            print('Data generation failed.')
