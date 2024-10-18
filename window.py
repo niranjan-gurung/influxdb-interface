@@ -1,9 +1,10 @@
 from PyQt6.QtWidgets import \
     QMainWindow, QPushButton, QLabel, \
     QWidget, QLineEdit, QSpinBox, \
-    QVBoxLayout, QHBoxLayout
+    QVBoxLayout, QHBoxLayout, QComboBox
 
 from influx import create_db, generate_data
+from influx import list_buckets
 
 # subclass QMainWindow
 class MainWindow(QMainWindow):
@@ -12,59 +13,80 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("InfluxDB Interface")
 
-        # bucket label
-        self.b_name_label = QLabel("Bucket name")
-        self.b_ret_label = QLabel("Bucket retention in days (0 for no expiration)")
-        # data label
-        self.gen_data_label = QLabel("Generate Data")
 
+        ##################
+        # LAYOUT SCHEMA  #
+        ##################
+
+        # parent layout container:
+        main_layout = QVBoxLayout()
+
+        # bucket info:
+        b_content_left = QVBoxLayout()
+        b_content_right = QVBoxLayout()
+        b_parent_content_layout = QHBoxLayout()
+
+        # data gen info:
+        gen_content_layout = QVBoxLayout()
+
+
+        ##################
+        # LABELS DEFINES #
+        ##################
+
+        # bucket:
+        self.b_name_label = QLabel("Bucket name")
         self.bucket = QLineEdit()
         self.bucket.setPlaceholderText("enter name")
-        self.retention = QSpinBox()
 
+        # bucket retention:
+        self.b_ret_label = QLabel("Bucket retention in days (0 for no expiration)")
+        self.retention = QSpinBox()
+        
+        # bucket submit:
         self.submit_btn = QPushButton("submit")
         self.submit_btn.clicked.connect(self.on_create)
 
+        # data generation:
+        self.gen_data_label = QLabel("Generate Data")
+
+        self.bucket_choice_label = QLabel("Choose a bucket to operate on")
+        self.bucket_choice = QComboBox()
+
+        # GET: all buckets from current org's database
+        # list in combo box:
+        bucket_list = list_buckets()       
+        self.bucket_choice.addItems(bucket_list)
+
+        self.row_amount_label = QLabel("Number of data rows you want to generate")
+        self.row_amount = QSpinBox()
         self.generate_btn = QPushButton("generate")
         self.generate_btn.clicked.connect(self.on_generate)
 
-        main_layout = QVBoxLayout()
-        content_left = QVBoxLayout()
-        content_right = QVBoxLayout()
-        content_layout = QHBoxLayout()
 
-        content_left.addWidget(self.b_name_label)
-        content_left.addWidget(self.bucket)
-        content_right.addWidget(self.b_ret_label)
-        content_right.addWidget(self.retention)
+        ##################
+        # LAYOUT DEFINES #
+        ##################
 
-        content_layout.addLayout(content_left)
-        content_layout.addLayout(content_right)
+        b_content_left.addWidget(self.b_name_label)
+        b_content_left.addWidget(self.bucket)
+        b_content_right.addWidget(self.b_ret_label)
+        b_content_right.addWidget(self.retention)
 
-        main_layout.addLayout(content_layout)
+        b_parent_content_layout.addLayout(b_content_left)
+        b_parent_content_layout.addLayout(b_content_right)
+
+        main_layout.addLayout(b_parent_content_layout)
         main_layout.addWidget(self.submit_btn)
 
+        gen_content_layout.addWidget(self.gen_data_label)
+        gen_content_layout.addWidget(self.bucket_choice_label)
+        gen_content_layout.addWidget(self.bucket_choice)
+        gen_content_layout.addWidget(self.row_amount_label)
+        gen_content_layout.addWidget(self.row_amount)
+        gen_content_layout.addWidget(self.generate_btn)
 
-        # list all buckets from the org,
-        # allowing user to select which bucket to generate data for..
-
-        # client = init_connection()
-        # buckets_api = client.buckets_api()
-
-        # buckets = buckets_api.find_buckets_iter()
-        # print("\n".join([f"\n Name: {bucket.name}" 
-        #          for bucket in buckets]))
-
-
-        #######################################################
-        #                                                     #
-        # add QSpinBox() to define how many rows to generate? #
-        #                                                     #
-        #######################################################
-
-
-        main_layout.addWidget(self.gen_data_label)
-        main_layout.addWidget(self.generate_btn)
+        main_layout.addLayout(gen_content_layout)
 
         container = QWidget()
         container.setLayout(main_layout)
@@ -83,9 +105,10 @@ class MainWindow(QMainWindow):
             print("Faied to create bucket.")
 
     def on_generate(self):
-        # replace this with selected bucket from drop down list..
-        bucket_name = self.bucket.text()
-        sensors = generate_data(bucket_name)
+        bucket_name = self.bucket_choice.currentText()
+        row_amount = self.row_amount.text()
+        
+        sensors = generate_data(bucket_name, row_amount)
 
         print('data generating...')
 

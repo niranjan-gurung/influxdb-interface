@@ -12,6 +12,20 @@ from connect_db import init_connection
 import random
 
 """
+Returns a list of all buckets
+"""
+def list_buckets():
+    with init_connection() as client:
+        buckets_str = []
+        buckets_api = client.buckets_api()
+        buckets = buckets_api.find_buckets_iter()
+
+        for bucket in buckets:
+            buckets_str.append(bucket.name)
+            
+        return buckets_str
+
+"""
 Create new bucket + define its retention,
 """
 def create_db(bucket_name, bucket_ret_days):
@@ -45,7 +59,7 @@ def create_db(bucket_name, bucket_ret_days):
 Generate fake/dummy data for testing,
 creates sensor data used in trains by default.
 """
-def generate_data(bucket_name):
+def generate_data(bucket_name, row_amount):
     # used to change tag (from 101 - 105)
     counter = 0
 
@@ -55,8 +69,7 @@ def generate_data(bucket_name):
 
     # establish connection to influxdb
     with init_connection() as client:
-        # range needs to be defined by user... (todo)
-        for i in range(20):
+        for i in range(int(row_amount)):
             if i % 5 == 0:
                 counter = 0
             counter += 1
