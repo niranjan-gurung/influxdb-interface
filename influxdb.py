@@ -14,7 +14,7 @@ import random
 """
 Returns a list of all buckets.
 """
-def list_buckets():
+def get_buckets():
     with init_connection() as client:
         buckets_str = []
         buckets_api = client.buckets_api()
@@ -34,7 +34,7 @@ def create_db(bucket_name, bucket_ret_days):
     if bucket_name == "": 
         return None
         
-    # string -> int
+    # bucket retention (string -> int)
     ret_days = int(bucket_ret_days)
     
     # retention == how long DB will keep its data
@@ -70,7 +70,7 @@ def generate_data(bucket_name, row_amount):
 
     # return value..
     # used for debug
-    sensor_data = []
+    data = []
 
     # establish connection to influxdb
     with init_connection() as client:
@@ -91,7 +91,7 @@ def generate_data(bucket_name, row_amount):
                 round(random.uniform(-1, 1), 3))    # acz
             
             print(sensor)
-            sensor_data.append(sensor)
+            data.append(sensor)
 
             write_api = client.write_api(write_options=SYNCHRONOUS)
             write_api.write(
@@ -106,7 +106,7 @@ def generate_data(bucket_name, row_amount):
                     "co2", 
                     "acX", "acY", "acZ"])
             
-        return sensor_data
+        return data
             
 """
 Delete a given bucket.

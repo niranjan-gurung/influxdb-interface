@@ -4,18 +4,28 @@ from PyQt6.QtWidgets import (
     QLabel, 
     QWidget, 
     QLineEdit, 
+    QTextEdit,
     QSpinBox, 
     QVBoxLayout, 
     QHBoxLayout, 
     QComboBox,
     QTabWidget,
+    QListWidget
 )
 
-from influx import create_db, generate_data, delete_db
-from influx import list_buckets
+from influxdb import create_db, generate_data, delete_db
+from influxdb import get_buckets
+from task import get_tasks, aggregate_flux_query
 
 # subclass QMainWindow
 class MainWindow(QMainWindow):
+    # Static properties:
+    # GET: all current buckets
+    bucket_list = get_buckets()  
+
+    # GET: all current tasks - active or inactive
+    task_list = get_tasks()
+
     def __init__(self):
         super(MainWindow, self).__init__()
 
@@ -35,15 +45,15 @@ class MainWindow(QMainWindow):
         # data gen info:
         gen_content_layout = QVBoxLayout()
 
-        # task info (TODO):
+        # task info:
         task_content_layout = QVBoxLayout()
+        task_preset_left = QVBoxLayout()
+        task_preset_right = QVBoxLayout()
+        task_preset_layout = QHBoxLayout()
 
         ##################
         # LABELS DEFINES #
         ##################
-
-        # GET: all buckets from current org's database
-        bucket_list = list_buckets()      
 
         # bucket:
         self.b_name_label = QLabel("Bucket name")
@@ -61,7 +71,7 @@ class MainWindow(QMainWindow):
         # bucket list (dropdown):
         self.bucket_choice_label = QLabel("Bucket list: ")
         self.bucket_choice = QComboBox()
-        self.bucket_choice.addItems(bucket_list)
+        self.bucket_choice.addItems(MainWindow.bucket_list)
         
         # bucket delete button:
         self.bucket_del_btn = QPushButton("delete")
@@ -71,23 +81,43 @@ class MainWindow(QMainWindow):
         self.gen_data_label = QLabel("Data Generation")
         self.bucket_choice_gen_label = QLabel("Choose bucket to generate data for: ")
         self.bucket_choice_gen = QComboBox()
-        self.bucket_choice_gen.addItems(bucket_list)
-
-        self.data_theme_label = QLabel("Pick preset data theme (default is 'sensor'): ")
-        self.data_theme_choice = QComboBox()
-        self.data_theme_choice.addItems(["sensor", "Country", "..."])
+        self.bucket_choice_gen.addItems(MainWindow.bucket_list)
 
         self.row_amount_label = QLabel("Number of data rows you want to generate")
         self.row_amount = QSpinBox()
         self.generate_btn = QPushButton("generate")
         self.generate_btn.clicked.connect(self.on_generate)
 
+        # tasks:
+        self.task_list_label = QLabel("Current tasks")
+        self.task_list_active = QListWidget()
+        self.task_list_active.addItems(MainWindow.task_list)
+        self.task_list_active.setMaximumHeight(80)
+
+        self.task_preset_label = QLabel("Task presets")
+        self.task_preset_choice = QComboBox()
+        self.task_preset_choice.addItems(["Aggregate"])
+
+        self.from_bucket_label = QLabel("from bucket")
+        self.from_bucket_choice = QComboBox()
+        self.from_bucket_choice.addItems(MainWindow.bucket_list)
+        self.to_bucket_label = QLabel("to bucket")
+        self.to_bucket_choice = QComboBox()
+        self.to_bucket_choice.addItems(MainWindow.bucket_list)
+        
+        self.task_preset_btn = QPushButton("Create preset task")
+        self.task_preset_btn.clicked.connect(self.on_create_preset)
+
+        self.flux_query_label = QLabel("Flux query")
+        self.flux_query_window = QTextEdit()
+        self.flux_query_window.setPlaceholderText("define your flux query task here")
+
 
         ##################
         # LAYOUT DEFINES #
         ##################
 
-        # bucket page:
+        # bucket tab:
         b_content_left.addWidget(self.b_name_label)
         b_content_left.addWidget(self.bucket)
         b_content_right.addWidget(self.b_ret_label)
@@ -110,13 +140,30 @@ class MainWindow(QMainWindow):
         gen_content_layout.addWidget(self.bucket_choice_gen_label)
         gen_content_layout.addWidget(self.bucket_choice_gen)
         
-        gen_content_layout.addWidget(self.data_theme_label)
-        gen_content_layout.addWidget(self.data_theme_choice)
-
         gen_content_layout.addWidget(self.row_amount_label)
         gen_content_layout.addWidget(self.row_amount)
         gen_content_layout.addWidget(self.generate_btn)
         
+        # task tab:
+        task_content_layout.addWidget(self.task_list_label)
+        task_content_layout.addWidget(self.task_list_active)
+        task_content_layout.addWidget(self.task_preset_label)
+        task_content_layout.addWidget(self.task_preset_choice)
+
+        task_preset_left.addWidget(self.from_bucket_label)
+        task_preset_left.addWidget(self.from_bucket_choice)
+
+        task_preset_right.addWidget(self.to_bucket_label)
+        task_preset_right.addWidget(self.to_bucket_choice)
+
+        task_preset_layout.addLayout(task_preset_left)
+        task_preset_layout.addLayout(task_preset_right)
+
+        task_content_layout.addLayout(task_preset_layout)
+        task_content_layout.addWidget(self.task_preset_btn)
+
+        task_content_layout.addWidget(self.flux_query_label)
+        task_content_layout.addWidget(self.flux_query_window)
         
         ##############
         # TAB DEFINE #
@@ -129,6 +176,7 @@ class MainWindow(QMainWindow):
         
         bucket_tab.setLayout(bucket_parent_layout)
         generate_tab.setLayout(gen_content_layout)
+        task_tab.setLayout(task_content_layout)
 
         tab_list.addTab(bucket_tab, "Bucket")
         tab_list.addTab(generate_tab, "Generate")
@@ -146,16 +194,17 @@ class MainWindow(QMainWindow):
         if bucket:
             print(f"Successfully created bucket \'{bucket.name}\'.")
 
-            # append new bucket in dropdown menu: 
-            bucket_list = list_buckets()       
-            self.bucket_choice.addItem(bucket_list[len(bucket_list)-1])
+            # append new bucket in all dropdown menus: 
+            last_element = MainWindow.bucket_list[len(MainWindow.bucket_list)-1]
+            self.bucket_choice.addItem(last_element)
+            self.bucket_choice_gen.addItem(last_element)
         else:
             print("Error: Bucket name can't be left empty.")
 
     def on_generate(self):
-        bucket_name = self.bucket_choice.currentText()
+        bucket_name = self.bucket_choice_gen.currentText()
         row_amount = self.row_amount.text()
-        
+
         print("data generating...")
         sensors = generate_data(bucket_name, row_amount)
 
@@ -171,9 +220,21 @@ class MainWindow(QMainWindow):
         if deleted == None:
             print(f"Bucket: \'{bucket_name}\' successfully deleted.")
 
-            # removes currently selected item from ComboBox:
+            # removes currently selected item from all dropdowns:
             idx = self.bucket_choice.currentIndex()
             self.bucket_choice.removeItem(idx)
+            self.bucket_choice_gen.removeItem(idx)
         else:
             print("Failed to delete bucket.")
-            
+
+    def on_create_preset(self):
+        print("preset created!")
+
+        from_bucket = self.from_bucket_choice.currentText()
+        to_bucket = self.to_bucket_choice.currentText()
+
+        # call predefined task query from task.py:
+        aggregate_flux_query(from_bucket, to_bucket)
+
+        # call tasks_api.create_task() -> pass in flux query w/ active status
+        # TODO...

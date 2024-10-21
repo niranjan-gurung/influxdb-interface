@@ -18,8 +18,10 @@ class Sensor:
     acZ: float
 
 # todo:
+@dataclass
 class Country:
     pass
 
+@dataclass
 class Car:
     pass
