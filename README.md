@@ -3,4 +3,4 @@
 To help communicate with InfluxDB.
 
 to install dependencies
-> pip install -r requirements-dev.txt 
+> pip install -r requirements.txt 

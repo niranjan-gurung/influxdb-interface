@@ -3,13 +3,13 @@ from PyQt6.QtWidgets import \
     QWidget, QLineEdit, QSpinBox, \
     QVBoxLayout, QHBoxLayout, QComboBox
 
-from influx import create_db, generate_data
+from influx import create_db, generate_data, delete_db
 from influx import list_buckets
 
 # subclass QMainWindow
 class MainWindow(QMainWindow):
     def __init__(self):
-        super(MainWindow, self).__init__()
+        super().__init__()
 
         self.setWindowTitle("InfluxDB Interface")
 
@@ -28,7 +28,6 @@ class MainWindow(QMainWindow):
 
         # data gen info:
         gen_content_layout = QVBoxLayout()
-
 
         ##################
         # LABELS DEFINES #
@@ -58,6 +57,10 @@ class MainWindow(QMainWindow):
         bucket_list = list_buckets()       
         self.bucket_choice.addItems(bucket_list)
 
+        # bucket delete
+        self.bucket_del_btn = QPushButton("delete")
+        self.bucket_del_btn.clicked.connect(self.on_delete)
+
         self.row_amount_label = QLabel("Number of data rows you want to generate")
         self.row_amount = QSpinBox()
         self.generate_btn = QPushButton("generate")
@@ -82,6 +85,9 @@ class MainWindow(QMainWindow):
         gen_content_layout.addWidget(self.gen_data_label)
         gen_content_layout.addWidget(self.bucket_choice_label)
         gen_content_layout.addWidget(self.bucket_choice)
+
+        gen_content_layout.addWidget(self.bucket_del_btn)
+
         gen_content_layout.addWidget(self.row_amount_label)
         gen_content_layout.addWidget(self.row_amount)
         gen_content_layout.addWidget(self.generate_btn)
@@ -101,6 +107,10 @@ class MainWindow(QMainWindow):
 
         if bucket:
             print(f'Successfully created bucket \'{bucket.name}\'.')
+
+            # append new bucket in dropdown menu: 
+            bucket_list = list_buckets()       
+            self.bucket_choice.addItem(bucket_list[len(bucket_list)-1])
         else:
             print("Faied to create bucket.")
 
@@ -108,11 +118,23 @@ class MainWindow(QMainWindow):
         bucket_name = self.bucket_choice.currentText()
         row_amount = self.row_amount.text()
         
-        sensors = generate_data(bucket_name, row_amount)
-
         print('data generating...')
+        sensors = generate_data(bucket_name, row_amount)
 
         if sensors:
             print('Successfully generated dummy data!!')
         else:
             print('Data generation failed.')
+    
+    def on_delete(self):
+        bucket_name = self.bucket_choice.currentText()
+        deleted = delete_db(bucket_name)
+
+        if deleted == None:
+            print(f'Bucket: \'{bucket_name}\' successfully deleted.')
+
+            # removes currently selected item from ComboBox:
+            idx = self.bucket_choice.currentIndex()
+            self.bucket_choice.removeItem(idx)
+        else:
+            print('Failed to delete bucket.')

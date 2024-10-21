@@ -12,7 +12,7 @@ from connect_db import init_connection
 import random
 
 """
-Returns a list of all buckets
+Returns a list of all buckets.
 """
 def list_buckets():
     with init_connection() as client:
@@ -26,7 +26,7 @@ def list_buckets():
         return buckets_str
 
 """
-Create new bucket + define its retention,
+Create new bucket + define its retention.
 """
 def create_db(bucket_name, bucket_ret_days):
     # string -> int
@@ -69,7 +69,7 @@ def generate_data(bucket_name, row_amount):
 
     # establish connection to influxdb
     with init_connection() as client:
-        for i in range(int(row_amount)):
+        for i in range(0, int(row_amount)):
             if i % 5 == 0:
                 counter = 0
             counter += 1
@@ -103,4 +103,15 @@ def generate_data(bucket_name, row_amount):
             
         return sensor_data
             
-    
+
+"""
+Delete a given bucket.
+"""
+def delete_db(bucket_name):
+    with init_connection() as client:
+        buckets_api = client.buckets_api()
+        bucket = buckets_api.find_bucket_by_name(bucket_name)
+        deleted_bucket = buckets_api.delete_bucket(bucket)
+        # print(deleted_bucket)
+
+        return deleted_bucket
