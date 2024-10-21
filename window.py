@@ -1,7 +1,15 @@
-from PyQt6.QtWidgets import \
-    QMainWindow, QPushButton, QLabel, \
-    QWidget, QLineEdit, QSpinBox, \
-    QVBoxLayout, QHBoxLayout, QComboBox
+from PyQt6.QtWidgets import (
+    QMainWindow, 
+    QPushButton, 
+    QLabel, 
+    QWidget, 
+    QLineEdit, 
+    QSpinBox, 
+    QVBoxLayout, 
+    QHBoxLayout, 
+    QComboBox,
+    QTabWidget,
+)
 
 from influx import create_db, generate_data, delete_db
 from influx import list_buckets
@@ -9,29 +17,33 @@ from influx import list_buckets
 # subclass QMainWindow
 class MainWindow(QMainWindow):
     def __init__(self):
-        super().__init__()
+        super(MainWindow, self).__init__()
 
         self.setWindowTitle("InfluxDB Interface")
-
-
+        
         ##################
         # LAYOUT SCHEMA  #
         ##################
 
-        # parent layout container:
-        main_layout = QVBoxLayout()
-
-        # bucket info:
+        # bucket create/delete info:
+        bucket_parent_layout = QVBoxLayout()
         b_content_left = QVBoxLayout()
         b_content_right = QVBoxLayout()
-        b_parent_content_layout = QHBoxLayout()
+        b_create_layout = QHBoxLayout()
+        b_delete_layout = QVBoxLayout()
 
         # data gen info:
         gen_content_layout = QVBoxLayout()
 
+        # task info (TODO):
+        task_content_layout = QVBoxLayout()
+
         ##################
         # LABELS DEFINES #
         ##################
+
+        # GET: all buckets from current org's database
+        bucket_list = list_buckets()      
 
         # bucket:
         self.b_name_label = QLabel("Bucket name")
@@ -43,23 +55,27 @@ class MainWindow(QMainWindow):
         self.retention = QSpinBox()
         
         # bucket submit:
-        self.submit_btn = QPushButton("submit")
-        self.submit_btn.clicked.connect(self.on_create)
+        self.create_btn = QPushButton("create")
+        self.create_btn.clicked.connect(self.on_create)
 
-        # data generation:
-        self.gen_data_label = QLabel("Generate Data")
-
-        self.bucket_choice_label = QLabel("Choose a bucket to operate on")
+        # bucket list (dropdown):
+        self.bucket_choice_label = QLabel("Bucket list: ")
         self.bucket_choice = QComboBox()
-
-        # GET: all buckets from current org's database
-        # list in combo box:
-        bucket_list = list_buckets()       
         self.bucket_choice.addItems(bucket_list)
-
-        # bucket delete
+        
+        # bucket delete button:
         self.bucket_del_btn = QPushButton("delete")
         self.bucket_del_btn.clicked.connect(self.on_delete)
+        
+        # data generation:
+        self.gen_data_label = QLabel("Data Generation")
+        self.bucket_choice_gen_label = QLabel("Choose bucket to generate data for: ")
+        self.bucket_choice_gen = QComboBox()
+        self.bucket_choice_gen.addItems(bucket_list)
+
+        self.data_theme_label = QLabel("Pick preset data theme (default is 'sensor'): ")
+        self.data_theme_choice = QComboBox()
+        self.data_theme_choice.addItems(["sensor", "Country", "..."])
 
         self.row_amount_label = QLabel("Number of data rows you want to generate")
         self.row_amount = QSpinBox()
@@ -71,33 +87,54 @@ class MainWindow(QMainWindow):
         # LAYOUT DEFINES #
         ##################
 
+        # bucket page:
         b_content_left.addWidget(self.b_name_label)
         b_content_left.addWidget(self.bucket)
         b_content_right.addWidget(self.b_ret_label)
         b_content_right.addWidget(self.retention)
 
-        b_parent_content_layout.addLayout(b_content_left)
-        b_parent_content_layout.addLayout(b_content_right)
+        b_create_layout.addLayout(b_content_left)
+        b_create_layout.addLayout(b_content_right)
 
-        main_layout.addLayout(b_parent_content_layout)
-        main_layout.addWidget(self.submit_btn)
+        bucket_parent_layout.addLayout(b_create_layout)
+        bucket_parent_layout.addWidget(self.create_btn)
+        
+        b_delete_layout.addWidget(self.bucket_choice_label)
+        b_delete_layout.addWidget(self.bucket_choice)
+        b_delete_layout.addWidget(self.bucket_del_btn)
 
+        bucket_parent_layout.addLayout(b_delete_layout)
+
+        # generate tab:
         gen_content_layout.addWidget(self.gen_data_label)
-        gen_content_layout.addWidget(self.bucket_choice_label)
-        gen_content_layout.addWidget(self.bucket_choice)
-
-        gen_content_layout.addWidget(self.bucket_del_btn)
+        gen_content_layout.addWidget(self.bucket_choice_gen_label)
+        gen_content_layout.addWidget(self.bucket_choice_gen)
+        
+        gen_content_layout.addWidget(self.data_theme_label)
+        gen_content_layout.addWidget(self.data_theme_choice)
 
         gen_content_layout.addWidget(self.row_amount_label)
         gen_content_layout.addWidget(self.row_amount)
         gen_content_layout.addWidget(self.generate_btn)
+        
+        
+        ##############
+        # TAB DEFINE #
+        ##############
 
-        main_layout.addLayout(gen_content_layout)
+        tab_list = QTabWidget()
+        bucket_tab = QWidget()
+        generate_tab = QWidget()
+        task_tab = QWidget()
+        
+        bucket_tab.setLayout(bucket_parent_layout)
+        generate_tab.setLayout(gen_content_layout)
 
-        container = QWidget()
-        container.setLayout(main_layout)
+        tab_list.addTab(bucket_tab, "Bucket")
+        tab_list.addTab(generate_tab, "Generate")
+        tab_list.addTab(task_tab, "Tasks")
 
-        self.setCentralWidget(container)
+        self.setCentralWidget(tab_list)
 
     def on_create(self):
         bucket_name = self.bucket.text()
@@ -105,36 +142,38 @@ class MainWindow(QMainWindow):
 
         bucket = create_db(bucket_name, bucket_ret_days)
 
+        # MAKE THIS INTO A POP UP???? #
         if bucket:
-            print(f'Successfully created bucket \'{bucket.name}\'.')
+            print(f"Successfully created bucket \'{bucket.name}\'.")
 
             # append new bucket in dropdown menu: 
             bucket_list = list_buckets()       
             self.bucket_choice.addItem(bucket_list[len(bucket_list)-1])
         else:
-            print("Faied to create bucket.")
+            print("Error: Bucket name can't be left empty.")
 
     def on_generate(self):
         bucket_name = self.bucket_choice.currentText()
         row_amount = self.row_amount.text()
         
-        print('data generating...')
+        print("data generating...")
         sensors = generate_data(bucket_name, row_amount)
 
         if sensors:
-            print('Successfully generated dummy data!!')
+            print("Successfully generated dummy data!!")
         else:
-            print('Data generation failed.')
+            print("Data generation failed.")
     
     def on_delete(self):
         bucket_name = self.bucket_choice.currentText()
         deleted = delete_db(bucket_name)
 
         if deleted == None:
-            print(f'Bucket: \'{bucket_name}\' successfully deleted.')
+            print(f"Bucket: \'{bucket_name}\' successfully deleted.")
 
             # removes currently selected item from ComboBox:
             idx = self.bucket_choice.currentIndex()
             self.bucket_choice.removeItem(idx)
         else:
-            print('Failed to delete bucket.')
+            print("Failed to delete bucket.")
+            

@@ -29,6 +29,11 @@ def list_buckets():
 Create new bucket + define its retention.
 """
 def create_db(bucket_name, bucket_ret_days):
+
+    # MAKE THIS INTO A POP UP???? #
+    if bucket_name == "": 
+        return None
+        
     # string -> int
     ret_days = int(bucket_ret_days)
     
@@ -103,7 +108,6 @@ def generate_data(bucket_name, row_amount):
             
         return sensor_data
             
-
 """
 Delete a given bucket.
 """
@@ -112,6 +116,5 @@ def delete_db(bucket_name):
         buckets_api = client.buckets_api()
         bucket = buckets_api.find_bucket_by_name(bucket_name)
         deleted_bucket = buckets_api.delete_bucket(bucket)
-        # print(deleted_bucket)
 
         return deleted_bucket
