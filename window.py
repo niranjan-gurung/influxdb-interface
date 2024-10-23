@@ -15,9 +15,9 @@ from PyQt6.QtWidgets import (
 
 from influxdb import create_db, generate_data, delete_db
 from influxdb import get_buckets
-from task import get_tasks, aggregate_flux_query
+from task import get_tasks, create_task_preset
 
-# subclass QMainWindow
+# inherit QMainWindow
 class MainWindow(QMainWindow):
     # Static properties:
     # GET: all current buckets
@@ -91,7 +91,8 @@ class MainWindow(QMainWindow):
         # tasks:
         self.task_list_label = QLabel("Current tasks")
         self.task_list_active = QListWidget()
-        self.task_list_active.addItems(MainWindow.task_list)
+        self.task_list_active.addItems(
+            f"{x.name} \t-\t {x.status}" for x in MainWindow.task_list)
         self.task_list_active.setMaximumHeight(80)
 
         self.task_preset_label = QLabel("Task presets")
@@ -205,8 +206,12 @@ class MainWindow(QMainWindow):
         bucket_name = self.bucket_choice_gen.currentText()
         row_amount = self.row_amount.text()
 
+        # TODO...
+        # select preset theme to generate data for:
+        preset_data = ''
+
         print("data generating...")
-        sensors = generate_data(bucket_name, row_amount)
+        sensors = generate_data(bucket_name, row_amount, preset_data)
 
         if sensors:
             print("Successfully generated dummy data!!")
@@ -228,13 +233,27 @@ class MainWindow(QMainWindow):
             print("Failed to delete bucket.")
 
     def on_create_preset(self):
-        print("preset created!")
-
+        # chosen task preset:
+        task_preset = self.task_preset_choice.currentText()
+        
         from_bucket = self.from_bucket_choice.currentText()
         to_bucket = self.to_bucket_choice.currentText()
 
-        # call predefined task query from task.py:
-        aggregate_flux_query(from_bucket, to_bucket)
+        if from_bucket == to_bucket:
+            print("Can't aggregate into the same bucket.")
 
-        # call tasks_api.create_task() -> pass in flux query w/ active status
-        # TODO...
+        # TODO:
+        # add more task preset
+        match task_preset:
+            case "Aggregate":
+                task = create_task_preset(from_bucket, to_bucket)
+
+            case "other":
+                pass
+            case _:
+                pass
+        
+        if task:
+            print("Task preset created!")
+        else:
+            print("Error: failed to create task.")

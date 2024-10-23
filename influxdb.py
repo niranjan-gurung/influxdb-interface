@@ -64,7 +64,7 @@ def create_db(bucket_name, bucket_ret_days):
 Generate fake/dummy data for testing,
 creates sensor data used in trains by default.
 """
-def generate_data(bucket_name, row_amount):
+def generate_data(bucket_name, row_amount, preset_data):
     # used to change tag (from 101 - 105)
     counter = 0
 
@@ -78,6 +78,17 @@ def generate_data(bucket_name, row_amount):
             if i % 5 == 0:
                 counter = 0
             counter += 1
+
+            # data preset options: 
+            # match preset_data:
+            #     case 'Sensor':
+            #         pass
+            #     case 'Country':
+            #         pass
+            #     case 'Car':
+            #         pass
+            #     case _:
+            #         pass
 
             # prepare payload
             sensor = Sensor(
