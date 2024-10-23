@@ -13,24 +13,21 @@ from PyQt6.QtWidgets import (
     QListWidget
 )
 
+from PyQt6.QtCore import Qt
+
 from influxdb import create_db, generate_data, delete_db
 from influxdb import get_buckets
 from task import get_tasks, create_task_preset
 
 # inherit QMainWindow
 class MainWindow(QMainWindow):
-    # Static properties:
-    # GET: all current buckets
-    bucket_list = get_buckets()  
-
-    # GET: all current tasks - active or inactive
-    task_list = get_tasks()
-
     def __init__(self):
         super(MainWindow, self).__init__()
 
         self.setWindowTitle("InfluxDB Interface")
         
+        bucket_list = get_buckets()  
+
         ##################
         # LAYOUT SCHEMA  #
         ##################
@@ -71,7 +68,7 @@ class MainWindow(QMainWindow):
         # bucket list (dropdown):
         self.bucket_choice_label = QLabel("Bucket list: ")
         self.bucket_choice = QComboBox()
-        self.bucket_choice.addItems(MainWindow.bucket_list)
+        self.bucket_choice.addItems(bucket_list)
         
         # bucket delete button:
         self.bucket_del_btn = QPushButton("delete")
@@ -81,7 +78,7 @@ class MainWindow(QMainWindow):
         self.gen_data_label = QLabel("Data Generation")
         self.bucket_choice_gen_label = QLabel("Choose bucket to generate data for: ")
         self.bucket_choice_gen = QComboBox()
-        self.bucket_choice_gen.addItems(MainWindow.bucket_list)
+        self.bucket_choice_gen.addItems(bucket_list)
 
         self.row_amount_label = QLabel("Number of data rows you want to generate")
         self.row_amount = QSpinBox()
@@ -89,10 +86,13 @@ class MainWindow(QMainWindow):
         self.generate_btn.clicked.connect(self.on_generate)
 
         # tasks:
+        # GET: all current tasks - active or inactive
+        task_list = get_tasks()
+
         self.task_list_label = QLabel("Current tasks")
         self.task_list_active = QListWidget()
         self.task_list_active.addItems(
-            f"{x.name} \t-\t {x.status}" for x in MainWindow.task_list)
+            f"{x.name} \t-\t {x.status}" for x in task_list)
         self.task_list_active.setMaximumHeight(80)
 
         self.task_preset_label = QLabel("Task presets")
@@ -101,10 +101,10 @@ class MainWindow(QMainWindow):
 
         self.from_bucket_label = QLabel("from bucket")
         self.from_bucket_choice = QComboBox()
-        self.from_bucket_choice.addItems(MainWindow.bucket_list)
+        self.from_bucket_choice.addItems(bucket_list)
         self.to_bucket_label = QLabel("to bucket")
         self.to_bucket_choice = QComboBox()
-        self.to_bucket_choice.addItems(MainWindow.bucket_list)
+        self.to_bucket_choice.addItems(bucket_list)
         
         self.task_preset_btn = QPushButton("Create preset task")
         self.task_preset_btn.clicked.connect(self.on_create_preset)
@@ -196,9 +196,14 @@ class MainWindow(QMainWindow):
             print(f"Successfully created bucket \'{bucket.name}\'.")
 
             # append new bucket in all dropdown menus: 
-            last_element = MainWindow.bucket_list[len(MainWindow.bucket_list)-1]
-            self.bucket_choice.addItem(last_element)
-            self.bucket_choice_gen.addItem(last_element)
+            self.bucket_choice.addItem(bucket_name)
+            self.bucket_choice_gen.addItem(bucket_name)
+            self.from_bucket_choice.addItem(bucket_name)
+            self.to_bucket_choice.addItem(bucket_name)
+            self.bucket_choice.model().sort(0)
+            self.bucket_choice_gen.model().sort(0)
+            self.from_bucket_choice.model().sort(0)
+            self.to_bucket_choice.model().sort(0)
         else:
             print("Error: Bucket name can't be left empty.")
 

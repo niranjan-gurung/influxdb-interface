@@ -28,7 +28,7 @@ def create_task_preset(from_bucket, to_bucket, task_name="downsample-task"):
             
             from(bucket: "{from_bucket}") 
                 |> range(start: -task.every) 
-                |> filter(fn: (r) => r["_measurement"] == "railData")
+                |> filter(fn: (r) => r["_measurement"] == "mqtt_consumer")
                 |> aggregateWindow(every: 10s, fn: mean)
                 |> to(bucket: "{to_bucket}", org: "{org}")
             '''.format(
