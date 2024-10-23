@@ -10,14 +10,15 @@ from PyQt6.QtWidgets import (
     QHBoxLayout, 
     QComboBox,
     QTabWidget,
-    QListWidget
+    QListWidget,
+    QListWidgetItem
 )
 
 from PyQt6.QtCore import Qt
 
 from influxdb import create_db, generate_data, delete_db
 from influxdb import get_buckets
-from task import get_tasks, create_task_preset
+from task import get_tasks, create_task_preset, update_task
 
 # inherit QMainWindow
 class MainWindow(QMainWindow):
@@ -26,7 +27,11 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("InfluxDB Interface")
         
-        bucket_list = get_buckets()  
+        # GET: all current buckets
+        buckets = get_buckets()  
+
+        # GET: all current tasks - active or inactive
+        tasks = get_tasks()
 
         ##################
         # LAYOUT SCHEMA  #
@@ -68,7 +73,7 @@ class MainWindow(QMainWindow):
         # bucket list (dropdown):
         self.bucket_choice_label = QLabel("Bucket list: ")
         self.bucket_choice = QComboBox()
-        self.bucket_choice.addItems(bucket_list)
+        self.bucket_choice.addItems(buckets)
         
         # bucket delete button:
         self.bucket_del_btn = QPushButton("delete")
@@ -78,7 +83,7 @@ class MainWindow(QMainWindow):
         self.gen_data_label = QLabel("Data Generation")
         self.bucket_choice_gen_label = QLabel("Choose bucket to generate data for: ")
         self.bucket_choice_gen = QComboBox()
-        self.bucket_choice_gen.addItems(bucket_list)
+        self.bucket_choice_gen.addItems(buckets)
 
         self.row_amount_label = QLabel("Number of data rows you want to generate")
         self.row_amount = QSpinBox()
@@ -86,14 +91,26 @@ class MainWindow(QMainWindow):
         self.generate_btn.clicked.connect(self.on_generate)
 
         # tasks:
-        # GET: all current tasks - active or inactive
-        task_list = get_tasks()
-
         self.task_list_label = QLabel("Current tasks")
-        self.task_list_active = QListWidget()
-        self.task_list_active.addItems(
-            f"{x.name} \t-\t {x.status}" for x in task_list)
-        self.task_list_active.setMaximumHeight(80)
+        self.task_list = QListWidget()
+        #self.task_list.addItems(f"{x.name} \t-\t {x.status}" for x in tasks)
+
+        for task in tasks:
+            task_info = f"{task.name}\t-\t{task.status}"
+            item = QListWidgetItem(task_info)
+
+            item.setFlags(item.flags() | 
+                          Qt.ItemFlag.ItemIsUserCheckable | 
+                          Qt.ItemFlag.ItemIsEnabled)
+            
+            if task.status == "active":
+                item.setCheckState(Qt.CheckState.Checked)
+            else:
+                item.setCheckState(Qt.CheckState.Unchecked)
+            self.task_list.addItem(item)
+
+        self.task_list.itemChanged.connect(self.on_task_clicked)
+        self.task_list.setMaximumHeight(80)
 
         self.task_preset_label = QLabel("Task presets")
         self.task_preset_choice = QComboBox()
@@ -101,10 +118,10 @@ class MainWindow(QMainWindow):
 
         self.from_bucket_label = QLabel("from bucket")
         self.from_bucket_choice = QComboBox()
-        self.from_bucket_choice.addItems(bucket_list)
+        self.from_bucket_choice.addItems(buckets)
         self.to_bucket_label = QLabel("to bucket")
         self.to_bucket_choice = QComboBox()
-        self.to_bucket_choice.addItems(bucket_list)
+        self.to_bucket_choice.addItems(buckets)
         
         self.task_preset_btn = QPushButton("Create preset task")
         self.task_preset_btn.clicked.connect(self.on_create_preset)
@@ -147,7 +164,7 @@ class MainWindow(QMainWindow):
         
         # task tab:
         task_content_layout.addWidget(self.task_list_label)
-        task_content_layout.addWidget(self.task_list_active)
+        task_content_layout.addWidget(self.task_list)
         task_content_layout.addWidget(self.task_preset_label)
         task_content_layout.addWidget(self.task_preset_choice)
 
@@ -194,16 +211,7 @@ class MainWindow(QMainWindow):
         # MAKE THIS INTO A POP UP???? #
         if bucket:
             print(f"Successfully created bucket \'{bucket.name}\'.")
-
-            # append new bucket in all dropdown menus: 
-            self.bucket_choice.addItem(bucket_name)
-            self.bucket_choice_gen.addItem(bucket_name)
-            self.from_bucket_choice.addItem(bucket_name)
-            self.to_bucket_choice.addItem(bucket_name)
-            self.bucket_choice.model().sort(0)
-            self.bucket_choice_gen.model().sort(0)
-            self.from_bucket_choice.model().sort(0)
-            self.to_bucket_choice.model().sort(0)
+            self.update_bucket_list()
         else:
             print("Error: Bucket name can't be left empty.")
 
@@ -234,13 +242,14 @@ class MainWindow(QMainWindow):
             idx = self.bucket_choice.currentIndex()
             self.bucket_choice.removeItem(idx)
             self.bucket_choice_gen.removeItem(idx)
+            self.from_bucket_choice.removeItem(idx)
+            self.to_bucket_choice.removeItem(idx)
         else:
             print("Failed to delete bucket.")
 
     def on_create_preset(self):
         # chosen task preset:
         task_preset = self.task_preset_choice.currentText()
-        
         from_bucket = self.from_bucket_choice.currentText()
         to_bucket = self.to_bucket_choice.currentText()
 
@@ -260,5 +269,65 @@ class MainWindow(QMainWindow):
         
         if task:
             print("Task preset created!")
+            self.update_task_window()
         else:
             print("Error: failed to create task.")
+
+    # working but super slow...
+    # probs not efficient
+    def on_task_clicked(self, item):
+
+        # grabbing tasks seems slow..
+        tasks = get_tasks()
+
+        values = item.text().split("\t")
+        name = values[0]
+        status = values[1]
+
+        for task in tasks:
+            matched = name == task.name
+            if item.checkState() is Qt.CheckState.Checked:
+                if matched:
+                    task.status = "active"
+                    #self.update_task_window()   
+                    update_task(task)
+                    return
+                print("checked")
+            else:
+                if matched:
+                    task.status = "inactive"
+                    #self.update_task_window()   
+                    update_task(task)
+                    return
+                print("unchecked")
+        
+        
+    def update_bucket_list(self):
+        # append new bucket in all dropdown menus: 
+        buckets = get_buckets()
+        
+        # clear current window
+        self.bucket_choice.clear()
+        self.bucket_choice_gen.clear()
+        self.from_bucket_choice.clear()
+        self.to_bucket_choice.clear()
+
+        # repopulate
+        self.bucket_choice.addItems(buckets)
+        self.bucket_choice_gen.addItems(buckets)
+        self.from_bucket_choice.addItems(buckets)
+        self.to_bucket_choice.addItems(buckets)
+
+    def update_task_window(self):
+        # update task list window.
+        # done by clearing current and repopulating:
+        tasks = get_tasks()
+        self.task_list.clear()
+        for task in tasks:
+            task_info = f"{task.name}\t-\t{task.status}"
+            item = QListWidgetItem(task_info)
+            if task.status == "active":
+                item.setCheckState(Qt.CheckState.Checked)
+            else:
+                item.setCheckState(Qt.CheckState.Unchecked)
+            self.task_list.addItem(item)

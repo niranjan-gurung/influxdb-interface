@@ -48,3 +48,9 @@ def create_task_preset(from_bucket, to_bucket, task_name="downsample-task"):
         task = tasks_api.create_task(task_create_request=task_req)
 
         return task 
+    
+def update_task(task):
+    with init_connection() as client:
+        tasks_api = client.tasks_api()
+        updated_task = tasks_api.update_task(task=task)
+        return updated_task
