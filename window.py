@@ -26,7 +26,7 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
 
         self.setWindowTitle("InfluxDB Interface")
-        
+
         # GET: all current buckets
         buckets = get_buckets()  
 
@@ -93,23 +93,11 @@ class MainWindow(QMainWindow):
         # tasks:
         self.task_list_label = QLabel("Current tasks")
         self.task_list = QListWidget()
-        #self.task_list.addItems(f"{x.name} \t-\t {x.status}" for x in tasks)
+        self.update_task_list_window(tasks)
 
-        for task in tasks:
-            task_info = f"{task.name}\t-\t{task.status}"
-            item = QListWidgetItem(task_info)
-
-            item.setFlags(item.flags() | 
-                          Qt.ItemFlag.ItemIsUserCheckable | 
-                          Qt.ItemFlag.ItemIsEnabled)
-            
-            if task.status == "active":
-                item.setCheckState(Qt.CheckState.Checked)
-            else:
-                item.setCheckState(Qt.CheckState.Unchecked)
-            self.task_list.addItem(item)
-
-        self.task_list.itemChanged.connect(self.on_task_clicked)
+        self.task_list.itemChanged.connect(
+            lambda item: self.on_task_clicked(item, tasks))
+        
         self.task_list.setMaximumHeight(80)
 
         self.task_preset_label = QLabel("Task presets")
@@ -125,6 +113,8 @@ class MainWindow(QMainWindow):
         
         self.task_preset_btn = QPushButton("Create preset task")
         self.task_preset_btn.clicked.connect(self.on_create_preset)
+        self.task_preset_btn.clicked.connect(
+            lambda item: self.on_create_preset(item, tasks))
 
         self.flux_query_label = QLabel("Flux query")
         self.flux_query_window = QTextEdit()
@@ -247,7 +237,7 @@ class MainWindow(QMainWindow):
         else:
             print("Failed to delete bucket.")
 
-    def on_create_preset(self):
+    def on_create_preset(self, item, tasks):
         # chosen task preset:
         task_preset = self.task_preset_choice.currentText()
         from_bucket = self.from_bucket_choice.currentText()
@@ -269,41 +259,34 @@ class MainWindow(QMainWindow):
         
         if task:
             print("Task preset created!")
-            self.update_task_window()
+            self.update_task_list_window(tasks)
         else:
             print("Error: failed to create task.")
 
-    # working but super slow...
-    # probs not efficient
-    def on_task_clicked(self, item):
-
-        # grabbing tasks seems slow..
-        tasks = get_tasks()
-
+    # working but still slow..
+    # slightly better than before
+    def on_task_clicked(self, item, tasks):
         values = item.text().split("\t")
         name = values[0]
-        status = values[1]
+        # status = values[1]
+        checked = item.checkState() is Qt.CheckState.Checked
 
+        # cursed loop:
         for task in tasks:
             matched = name == task.name
-            if item.checkState() is Qt.CheckState.Checked:
-                if matched:
+            if matched:
+                if checked:
                     task.status = "active"
-                    #self.update_task_window()   
+                    self.update_task_list_window(tasks)   
                     update_task(task)
-                    return
-                print("checked")
-            else:
-                if matched:
+                else:
                     task.status = "inactive"
-                    #self.update_task_window()   
+                    self.update_task_list_window(tasks)   
                     update_task(task)
-                    return
-                print("unchecked")
-        
         
     def update_bucket_list(self):
-        # append new bucket in all dropdown menus: 
+        # append new bucket in all dropdown menus.
+        # get updated list of buckets:
         buckets = get_buckets()
         
         # clear current window
@@ -318,11 +301,11 @@ class MainWindow(QMainWindow):
         self.from_bucket_choice.addItems(buckets)
         self.to_bucket_choice.addItems(buckets)
 
-    def update_task_window(self):
+    def update_task_list_window(self, tasks):
         # update task list window.
-        # done by clearing current and repopulating:
-        tasks = get_tasks()
+        # clear current list and repopulate:
         self.task_list.clear()
+
         for task in tasks:
             task_info = f"{task.name}\t-\t{task.status}"
             item = QListWidgetItem(task_info)
