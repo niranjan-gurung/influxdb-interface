@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QApplication
-
 from window import MainWindow
-
+import sys
+    
 if __name__ == '__main__':
     # app instance (once per app)
     app = QApplication([])
@@ -11,5 +11,8 @@ if __name__ == '__main__':
     window = MainWindow()
     window.show()
 
-    # event loop
-    app.exec()
+    try:
+        # event loop
+        sys.exit(app.exec())
+    except SystemExit:
+        print("Closing window..")        
