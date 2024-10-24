@@ -112,9 +112,8 @@ class MainWindow(QMainWindow):
         self.to_bucket_choice.addItems(buckets)
         
         self.task_preset_btn = QPushButton("Create preset task")
-        self.task_preset_btn.clicked.connect(self.on_create_preset)
         self.task_preset_btn.clicked.connect(
-            lambda item: self.on_create_preset(item, tasks))
+            lambda item: self.on_create_preset(tasks))
 
         self.flux_query_label = QLabel("Flux query")
         self.flux_query_window = QTextEdit()
@@ -237,7 +236,7 @@ class MainWindow(QMainWindow):
         else:
             print("Failed to delete bucket.")
 
-    def on_create_preset(self, item, tasks):
+    def on_create_preset(self, tasks):
         # chosen task preset:
         task_preset = self.task_preset_choice.currentText()
         from_bucket = self.from_bucket_choice.currentText()
@@ -259,7 +258,11 @@ class MainWindow(QMainWindow):
         
         if task:
             print("Task preset created!")
-            self.update_task_list_window(tasks)
+
+            # needed for updating task list window after creating new task:
+            # doesn't work as intended atm because of 'tasks' params.
+            # tasks = get_tasks()
+            # self.update_task_list_window(tasks)
         else:
             print("Error: failed to create task.")
 
@@ -305,7 +308,6 @@ class MainWindow(QMainWindow):
         # update task list window.
         # clear current list and repopulate:
         self.task_list.clear()
-
         for task in tasks:
             task_info = f"{task.name}\t-\t{task.status}"
             item = QListWidgetItem(task_info)
