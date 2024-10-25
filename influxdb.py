@@ -21,7 +21,7 @@ def get_buckets():
         buckets = buckets_api.find_buckets_iter()
 
         for bucket in buckets:
-            buckets_str.append(bucket.name)
+            buckets_str.append(bucket)
             
         return buckets_str
 
@@ -29,8 +29,6 @@ def get_buckets():
 Create new bucket + define its retention.
 """
 def create_db(bucket_name, bucket_ret_days):
-
-    # MAKE THIS INTO A POP UP???? #
     if bucket_name == "": 
         return None
         

@@ -1,4 +1,3 @@
-from PyQt6.QtWidgets import QApplication
 from PyQt6.QtWidgets import (
     QMainWindow, 
     QPushButton, 
@@ -11,14 +10,10 @@ from PyQt6.QtWidgets import (
     QHBoxLayout, 
     QComboBox,
     QTabWidget,
-    QListWidget,
-    QListWidgetItem,
     QListView,
 )
 
-from PyQt6.QtCore import Qt, QAbstractListModel, QStringListModel
 from PyQt6.QtGui import QStandardItem, QStandardItemModel
-
 from models import BucketModel
 
 from influxdb import create_db, generate_data, delete_db
@@ -37,28 +32,15 @@ class MainWindow(QMainWindow):
 
         # GET: all current tasks - active or inactive
         tasks = get_tasks()
-       
+
+        # extract name properties from bucket list object:
+        self.bucket_names = []
+        for b in buckets:
+            self.bucket_names.append(b.name)
+
         # models
-        self.bucket_model = BucketModel(buckets)
+        self.bucket_model = BucketModel(self.bucket_names)
         self.task_model = QStandardItemModel()
-
-        # views        
-        #self.bucket_view = QListView()
-        #self.bucket_create_view = QComboBox()
-        #self.bucket_gen_view = QComboBox()
-        # self.task_view = QListView()
-
-        # for task in tasks:
-        #     item = QStandardItem(task.name)
-        #     self.task_model.appendRow(item)
-
-        # bind models + views
-        #self.bucket_create_view.setModel(self.bucket_model)
-        #self.bucket_gen_view.setModel(self.bucket_model)
-        #self.task_view.setModel(self.task_model)
-
-        #layout.addWidget(self.bucket_view)
-        #layout.addWidget(self.task_view)
 
         ##################
         # LAYOUT SCHEMA  #
@@ -99,8 +81,6 @@ class MainWindow(QMainWindow):
 
         # bucket list (dropdown):
         self.bucket_choice_label = QLabel("Bucket list: ")
-        # self.bucket_choice = QComboBox()
-        # self.bucket_choice.addItems(buckets)
         self.bucket_create_view = QComboBox()
         self.bucket_create_view.setModel(self.bucket_model)
         
@@ -111,8 +91,6 @@ class MainWindow(QMainWindow):
         # data generation:
         self.gen_data_label = QLabel("Data Generation")
         self.bucket_choice_gen_label = QLabel("Choose bucket to generate data for: ")
-        # self.bucket_choice_gen = QComboBox()
-        # self.bucket_choice_gen.addItems(buckets)
         self.bucket_gen_view = QComboBox()
         self.bucket_gen_view.setModel(self.bucket_model)
 
@@ -130,33 +108,31 @@ class MainWindow(QMainWindow):
             self.task_model.appendRow(item)
         
         self.task_view.setModel(self.task_model)
+        self.task_view.setMaximumHeight(80)
 
-        #self.task_list = QListWidget()
         # self.update_task_list_window(tasks)
 
         # self.task_list.itemChanged.connect(
         #     lambda item: self.on_task_clicked(item, tasks))
         
-        # self.task_list.setMaximumHeight(80)
+        # self.task_preset_label = QLabel("Task presets")
+        # self.task_preset_choice = QComboBox()
+        # self.task_preset_choice.addItems(["Aggregate"])
 
-        self.task_preset_label = QLabel("Task presets")
-        self.task_preset_choice = QComboBox()
-        self.task_preset_choice.addItems(["Aggregate"])
-
-        self.from_bucket_label = QLabel("from bucket")
-        self.from_bucket_choice = QComboBox()
-        self.from_bucket_choice.addItems(buckets)
-        self.to_bucket_label = QLabel("to bucket")
-        self.to_bucket_choice = QComboBox()
-        self.to_bucket_choice.addItems(buckets)
+        # self.from_bucket_label = QLabel("from bucket")
+        # self.from_bucket_choice = QComboBox()
+        # self.from_bucket_choice.addItems(buckets)
+        # self.to_bucket_label = QLabel("to bucket")
+        # self.to_bucket_choice = QComboBox()
+        # self.to_bucket_choice.addItems(buckets)
         
-        self.task_preset_btn = QPushButton("Create preset task")
-        self.task_preset_btn.clicked.connect(
-            lambda item: self.on_create_preset(tasks))
+        # self.task_preset_btn = QPushButton("Create preset task")
+        # self.task_preset_btn.clicked.connect(
+        #     lambda item: self.on_create_preset(tasks))
 
-        self.flux_query_label = QLabel("Flux query")
-        self.flux_query_window = QTextEdit()
-        self.flux_query_window.setPlaceholderText("define your flux query task here")
+        # self.flux_query_label = QLabel("Flux query")
+        # self.flux_query_window = QTextEdit()
+        # self.flux_query_window.setPlaceholderText("define your flux query task here")
 
 
         ##################
@@ -185,7 +161,6 @@ class MainWindow(QMainWindow):
         gen_content_layout.addWidget(self.gen_data_label)
         gen_content_layout.addWidget(self.bucket_choice_gen_label)
         gen_content_layout.addWidget(self.bucket_gen_view)
-        #gen_content_layout.addWidget(self.bucket_choice_gen)
         
         gen_content_layout.addWidget(self.row_amount_label)
         gen_content_layout.addWidget(self.row_amount)
@@ -194,23 +169,23 @@ class MainWindow(QMainWindow):
         # task tab:
         task_content_layout.addWidget(self.task_list_label)
         task_content_layout.addWidget(self.task_view)
-        task_content_layout.addWidget(self.task_preset_label)
-        task_content_layout.addWidget(self.task_preset_choice)
+        # task_content_layout.addWidget(self.task_preset_label)
+        # task_content_layout.addWidget(self.task_preset_choice)
 
-        task_preset_left.addWidget(self.from_bucket_label)
-        task_preset_left.addWidget(self.from_bucket_choice)
+        # task_preset_left.addWidget(self.from_bucket_label)
+        # task_preset_left.addWidget(self.from_bucket_choice)
 
-        task_preset_right.addWidget(self.to_bucket_label)
-        task_preset_right.addWidget(self.to_bucket_choice)
+        # task_preset_right.addWidget(self.to_bucket_label)
+        # task_preset_right.addWidget(self.to_bucket_choice)
 
-        task_preset_layout.addLayout(task_preset_left)
-        task_preset_layout.addLayout(task_preset_right)
+        # task_preset_layout.addLayout(task_preset_left)
+        # task_preset_layout.addLayout(task_preset_right)
 
-        task_content_layout.addLayout(task_preset_layout)
-        task_content_layout.addWidget(self.task_preset_btn)
+        # task_content_layout.addLayout(task_preset_layout)
+        # task_content_layout.addWidget(self.task_preset_btn)
 
-        task_content_layout.addWidget(self.flux_query_label)
-        task_content_layout.addWidget(self.flux_query_window)
+        # task_content_layout.addWidget(self.flux_query_label)
+        # task_content_layout.addWidget(self.flux_query_window)
         
         ##############
         # TAB DEFINE #
@@ -234,14 +209,15 @@ class MainWindow(QMainWindow):
     def on_create(self):
         bucket_name = self.bucket.text()
         bucket_ret_days = self.retention.text()
-
         bucket = create_db(bucket_name, bucket_ret_days)
 
         if bucket:
-            print(f"Successfully created bucket \'{bucket.name}\'.")
-            self.bucket_model.buckets.append(bucket.name)
+            # update the bucket lists after inserting:
+            self.bucket_model.insertRow(bucket.name)
             self.bucket_model.layoutChanged.emit()
             self.bucket.setText("")
+
+            print(f"Successfully created bucket \'{bucket.name}\'.")
         else:
             print("Error: Bucket name can't be left empty.")
 
@@ -249,8 +225,18 @@ class MainWindow(QMainWindow):
         pass
 
     def on_delete(self):
-        print("deleted! :)")
-        pass
+        bucket_name = self.bucket_create_view.currentText()
+        deleted = delete_db(bucket_name)
+
+        if deleted == None:
+            # update the bucket lists after removing:
+            idx = self.bucket_create_view.currentIndex()
+            self.bucket_model.removeRow(idx)
+            self.bucket_model.layoutChanged.emit()
+            
+            print(f"Bucket: \'{bucket_name}\' successfully deleted.")
+        else:
+            print("Failed to delete bucket.")
 
     def on_task_clicked(self, item, tasks):
         pass
