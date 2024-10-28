@@ -21,7 +21,7 @@ class BucketModel(QAbstractListModel):
     
     @pyqtSlot(str)
     def insertRow(self, name):
-        print('inserting...')
+        print('adding...')
         self.beginInsertRows(QModelIndex(), self.rowCount(), self.rowCount())
         self.buckets.append(name)
         self.endInsertRows()
@@ -34,17 +34,3 @@ class BucketModel(QAbstractListModel):
         del self.buckets[row]
         self.endRemoveRows()
         return True
-    
-# Not sure if needed (replaced by QStandardItemModel)
-# as 'tasks' list is a list of json objects:
-class TaskModel(QAbstractListModel):
-    def __init__(self, tasks = None):
-        super(TaskModel, self).__init__()
-        self.tasks = tasks or []
-
-    def data(self, index, role):
-        if role == Qt.ItemDataRole.DisplayRole:
-            return self.tasks[index.row()]
-    
-    def rowCount(self, parent=QModelIndex()):
-        return len(self.tasks)
