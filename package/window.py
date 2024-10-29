@@ -54,17 +54,24 @@ class MainWindow(QMainWindow):
 
         # init task model:
         for task in tasks:
-            task_info = f"{task.name}\t-\t{task.status}"
-            item = QStandardItem(task_info)
-            item.setEditable(False)
-            item.setCheckable(True)
+            task_info = self.__new_task_model(task)
+            self.task_model.appendRow(task_info)
 
-            if task.status == "active":
-                item.setCheckState(Qt.CheckState.Checked)
-            else:
-                item.setCheckState(Qt.CheckState.Unchecked)
+    # private method.
+    # setup any new task being created
+    # gets added to task model: 
+    def __new_task_model(self, task):
+        task_info = f"{task.name}\t-\t{task.status}"
+        item = QStandardItem(task_info)
+        item.setEditable(False)
+        item.setCheckable(True)
 
-            self.task_model.appendRow(item)
+        if task.status == "active":
+            item.setCheckState(Qt.CheckState.Checked)
+        else:
+            item.setCheckState(Qt.CheckState.Unchecked)
+        
+        return item
 
     # slots:
     def on_create(self):
@@ -127,20 +134,14 @@ class MainWindow(QMainWindow):
         match task_preset:
             case "Aggregate":
                 task = create_task_preset(from_bucket, to_bucket, task_preset)
-
             case "other":
                 pass
             case _:
                 pass
         
         if task:
-            task_info = f"{task.name}\t-\t{task.status}"
-            item = QStandardItem(task_info)
-            if task.status == "active":
-                item.setCheckState(Qt.CheckState.Checked)
-            else:
-                item.setCheckState(Qt.CheckState.Unchecked)
-            self.task_model.appendRow(item)
+            task_info = self.__new_task_model(task)
+            self.task_model.appendRow(task_info)
             self.task_model.layoutChanged.emit()
 
             print("Task preset created!")
@@ -148,8 +149,6 @@ class MainWindow(QMainWindow):
             print("Error: failed to create task.")
 
     # current issues:
-    # toggle off not working.
-    # clicking newly added task erases name..
     # duplication in task check status..
     def on_task_toggled(self, index, tasks):
         item = self.task_model.itemFromIndex(index)
@@ -170,15 +169,15 @@ class MainWindow(QMainWindow):
             task.status = "inactive"
 
         task_info = f"{task.name}\t-\t{task.status}"
-
-        # update existing item's status: 
+        
+        # # update existing item's status: 
         item = QStandardItem(task_info)
 
         # introduces slight delay when toggling checkbox:
         updated_status = update_task(task)
 
         if updated_status:
-            self.task_model.setData(index, item)
+            self.task_model.setData(index, item.text())
             self.task_model.layoutChanged.emit()
             print(f"Task toggled - Status: {task.status}")
         else:
