@@ -8,7 +8,7 @@ from influxdb_client import BucketRetentionRules
 from influxdb_client.client.write_api import SYNCHRONOUS
 
 from data_model.structured_data import Sensor
-from connect_db import init_connection
+from db.connect_db import init_connection
 import random
 
 """

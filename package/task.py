@@ -1,5 +1,5 @@
 from influxdb_client import TaskCreateRequest
-from connect_db import init_connection
+from db.connect_db import init_connection
 
 def get_tasks():
     with init_connection() as client:
